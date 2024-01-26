@@ -64,6 +64,8 @@ async fn main() {
         id_binding
     );
 
+    // Display Nice Looking Message :)
+    // This looks cool no other reason.
     log::display_motd(&netopts);
 
 }

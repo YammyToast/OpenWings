@@ -2,10 +2,10 @@ use std::net::{Ipv4Addr, SocketAddrV4};
 use std::path::Path;
 
 pub struct NetOpts {
-    broadcast: SocketAddrV4,
-    clients: SocketAddrV4,
-    game_settings_loc: Box<Path>,
-    id: u16,
+    pub broadcast: SocketAddrV4,
+    pub clients: SocketAddrV4,
+    pub game_settings_loc: Box<Path>,
+    pub id: u16,
 }
 
 impl NetOpts {
