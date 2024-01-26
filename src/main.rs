@@ -1,20 +1,22 @@
-use std::env;
-
-use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::net::TcpListener;
-
+// use tokio::io::{AsyncRead, AsyncWrite};
+// use tokio::net::TcpListener;
 extern crate getopts;
 use getopts::Options;
 
 mod log;
+use crate::net::NetOpts;
+mod net;
 
 /***
  * Program Opts:
  * ------
  * Broadcast Socket - Output -o {16 bit integer, i.e. 88, 8000, 3000}
- * Reciever Socket Range - Input(s) -i {16 bit integer},{16}... (comma delim) 
- * Game Settings JSON/YAML location.
+ * Listener Socket - Input -l {16 bit integer} 
+ * Game Settings JSON/YAML location - FileLoc -set
+ * Game ID - ID -i {16 bit integer} 
  */
+
+
 
 fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} FILE [options]", program);
@@ -22,17 +24,23 @@ fn print_usage(program: &str, opts: Options) {
 
 }
 
+
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
-    println!("Arguments: {args:?}");
     let program: String = args[0].clone();
 
+    // Options Parser init
     let mut opts: Options = Options::new();
 
+    // Define Options and Help Info
     opts.optopt("o", "output-socket", "set output socket address", "OUTPUT_SOCKET");
+    opts.optopt("l", "listen-socket-range", "set list of listening sockets", "INPUT_SOCKET,INPUT_SOCKET,...");
+    opts.optopt("s", "settings-init-loc", "file location of initial game settings", "FILE_LOCATION");
+    opts.optopt("i", "game-id", "unique identifier for this game process", "ID");
     opts.optflag("h", "help", "print this help menu");
 
+    // Parse Matches from full arguments list
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => { m }
         Err(e) => { panic!("{}", e.to_string()) }
@@ -43,8 +51,21 @@ async fn main() {
         return;
     }
 
+    let broad_binding: Option<String> = matches.opt_str("o");
+    let listen_binding: Option<String> = matches.opt_str("l");
+    // let listen_socket_raw: &mut String = listen_binding.get_or_insert("25373".to_string());
+    let settings_loc_binding: Option<String> = matches.opt_str("s");
+    let id_binding: Option<String> = matches.opt_str("i");
 
-    log::display_motd()
+    let netopts = NetOpts::new(
+        broad_binding,
+        listen_binding,
+        settings_loc_binding,
+        id_binding
+    );
+
+    log::display_motd(&netopts);
+
 }
 
 // use std::{
