@@ -1,6 +1,14 @@
+use core::time;
+use std::io::Write;
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::path::Path;
+use std::thread;
 use std::{collections::HashMap, hash::Hash, collections::VecDeque,};
+use crossterm::{
+    cursor,
+    ExecutableCommand,
+};
+
 use serde::Deserialize;
 
 use crate::log::display_blocking;
@@ -74,15 +82,17 @@ impl Lobby<'_> {
     pub fn open_connections_blocking(&mut self) {
         let mut stdout = std::io::stdout();
 
-        let capacity: u16 = self.player_count.into();
-        let players_conn: usize = self.players.len();
-        while self.players.len() != self.players.capacity() {
-            self.players.clear();
-            for i in (1..5) {
+        let mut players_conn: u8 = 0;
+        let capacity: u8 = self.player_count.into();
+        while players_conn != capacity {
+            for i in 1..6 {
                 self.players.insert(i.to_string(), SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 88));
+                players_conn = players_conn + 1;
                 display_blocking(&stdout, &self, &capacity, &i);
+                thread::sleep(time::Duration::from_millis(1000));
             }
-
         }
+        stdout.execute(cursor::MoveToNextLine((capacity).into())).unwrap();
+        stdout.write_all("\n".as_bytes()).unwrap();
     }
 }

@@ -1,5 +1,8 @@
 use crate::net::{Lobby, NetOpts};
 use std::io::{stdout, Stdout, Write};
+use std::net::SocketAddrV4;
+use std::ops::Index;
+use std::vec;
 use std::{collections::HashMap, hash::Hash, thread, time};
 use std::cmp::Ordering;
 use crossterm::{
@@ -57,27 +60,26 @@ pub fn display_motd(__netopts: &NetOpts) {
     println!("{s}");
 }
 
-pub fn display_blocking(mut __stdout: &Stdout, __lobby: &Lobby, __capacity: &u16, __player_count: &u8) {
-    __stdout.queue(cursor::MoveToPreviousLine((*__capacity).into())).unwrap();
+pub fn display_blocking(mut __stdout: &Stdout, __lobby: &Lobby, __capacity: &u8, __player_count: &u8) {
+
     __stdout.queue(terminal::Clear(terminal::ClearType::FromCursorDown)).unwrap();
+
+    let mut vec_players: Vec<(String, SocketAddrV4)> = __lobby.players.clone().into_iter().collect();
     for i in 1..*__capacity+1 {
-        __stdout.write_all(format!("{}\n", i).as_bytes()).unwrap();
+        match vec_players.pop() {
+            Some((id, socket)) => {
+                __stdout.write_all(format!("Player: {:?} - Socket: {:?}\n", id, socket).as_bytes()).unwrap();
+            }
+            None => {
+                __stdout.write_all("\n".as_bytes()).unwrap();
+            }
+        }
+
     }
     __stdout.write_all(format!("Waiting for Connections ({}/{})...", __player_count, __capacity).as_bytes()).unwrap();
-    __stdout.flush().unwrap();
-
-
-    thread::sleep(time::Duration::from_millis(1000));
-    // for i in (1..30).rev() {
-    //     stdout.queue(cursor::SavePosition).unwrap();
-    //     stdout.write_all(format!("{}: FOOBAR ", i).as_bytes()).unwrap();
-    //     stdout.queue(cursor::RestorePosition).unwrap();
-    //     stdout.flush().unwrap();
-    //     thread::sleep(time::Duration::from_millis(100));
-
-    //     stdout.queue(cursor::RestorePosition).unwrap();
-    //     stdout.queue(terminal::Clear(terminal::ClearType::FromCursorDown)).unwrap();
-    // }
+    __stdout.queue(cursor::MoveToPreviousLine((*__capacity).into())).unwrap();
+    
+    __stdout.flush().unwrap();    
     __stdout.execute(cursor::Show).unwrap();
 
 
