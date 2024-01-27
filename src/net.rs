@@ -1,24 +1,25 @@
-use core::time;
-use std::io::{Write};
+use crossterm::{cursor, ExecutableCommand};
+use serde::Deserialize;
+use std::io::Write;
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::path::Path;
+use std::sync::Arc;
 use std::thread;
-use std::{collections::HashMap, hash::Hash, collections::VecDeque, net::SocketAddr};
-use crossterm::{
-    cursor,
-    ExecutableCommand,
-};
-use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, BufReader};
+use std::{collections::HashMap, collections::VecDeque, hash::Hash, net::SocketAddr};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::{mpsc, Mutex};
+use tokio_stream::StreamExt;
+use tokio_util::codec::{Framed, LinesCodec};
 
-
-use serde::Deserialize;
 
 use crate::log::display_blocking;
 
+type Tx = mpsc::UnboundedSender<String>;
+type Rx = mpsc::UnboundedReceiver<String>;
+
 #[derive(Debug, Deserialize)]
 pub struct JSONSettings {
-    players: u8
+    players: u8,
 }
 
 pub struct NetOpts {
@@ -50,8 +51,7 @@ impl NetOpts {
             __settings_path.get_or_insert("./settings_default.json".to_string()),
         );
 
-        let id = __id
-            .expect("No Game ID Provided! (-i ID)");
+        let id = __id.expect("No Game ID Provided! (-i ID)");
 
         return NetOpts {
             broadcast: broadcast_socket,
@@ -71,16 +71,16 @@ pub struct Lobby<'a> {
 
 impl Lobby<'_> {
     pub fn new<'a>(__json_settings: &'a JSONSettings, __netops: &'a NetOpts) -> Lobby<'a> {
-        let players= __json_settings.players.clamp(0, 5);
+        let players = __json_settings.players.clamp(0, 5);
         return Lobby {
             player_count: players,
             players: HashMap::with_capacity(players.into()),
             ready: false,
             net_opts: __netops,
-        }
-    }   
+        };
+    }
 
-    async fn handle_conn(mut __socket: TcpStream, __id: &String) {
+    async fn handle_conn(mut __socket: TcpStream, __id: Arc<String>) {
         let (read_stream, mut write_stream) = __socket.split();
         let mut read_stream = BufReader::new(read_stream);
         loop {
@@ -92,7 +92,12 @@ impl Lobby<'_> {
 
             println!("data: {}", data);
 
-            let res_bytes = format!("OpenWings: {__id}", ).as_bytes();
+            
+            write_stream
+                .write_all(&format!("OpenWings: {__id}",).as_bytes())
+                .await
+                .unwrap();
+            write_stream.write_all(b"\n").await.unwrap();
         }
     }
 
@@ -103,19 +108,18 @@ impl Lobby<'_> {
 
         let listener = match TcpListener::bind(self.net_opts.listen).await {
             Ok(e) => e,
-            Err(_) => panic!("Can't Bind Listening Port: {}", self.net_opts.listen) 
+            Err(_) => panic!("Can't Bind Listening Port: {}", self.net_opts.listen),
         };
+        let id = Arc::new(self.net_opts.id.clone());
 
         while players_conn != capacity {
             let (socket, ip) = listener.accept().await.unwrap();
 
             self.players.insert(players_conn.to_string(), ip);
             players_conn = players_conn + 1;
-            let id = &self.net_opts.id;
+            let id = Arc::clone(&id);
 
-            tokio::spawn(async move {
-                Self::handle_conn(socket, id).await
-            });
+            tokio::spawn(async move { Self::handle_conn(socket, id).await });
             display_blocking(&stdout, &self, &capacity, &players_conn)
             // for i in 1..6 {
             //     players_conn = players_conn + 1;
@@ -125,11 +129,12 @@ impl Lobby<'_> {
         }
         // Very Nasty Code but it works :)
         // Cleanup Terminal Outputs.
-        stdout.execute(cursor::MoveToNextLine((capacity).into())).unwrap();
+        stdout
+            .execute(cursor::MoveToNextLine((capacity).into()))
+            .unwrap();
         stdout.write_all("\n".as_bytes()).unwrap();
     }
 }
-
 
 /***
  * Player Register Packet
