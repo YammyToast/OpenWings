@@ -1,6 +1,14 @@
-use crate::net::NetOpts;
-use std::{collections::HashMap, hash::Hash};
+use crate::net::{Lobby, NetOpts};
+use std::io::{stdout, Stdout, Write};
+use std::{collections::HashMap, hash::Hash, thread, time};
 use std::cmp::Ordering;
+use crossterm::{
+    cursor,
+    terminal,
+    ExecutableCommand,
+    QueueableCommand
+};
+
 
 /* Log Line Format
      Timestamp | Line Number | [Message]
@@ -17,7 +25,7 @@ pub fn display_motd(__netopts: &NetOpts) {
         "Broadcast Port".to_string(),
         __netopts.broadcast.to_string(),
     );
-    arg_lines.insert("Listener Port".to_string(), __netopts.clients.to_string());
+    arg_lines.insert("Listener Port".to_string(), __netopts.listen.to_string());
     arg_lines.insert(
         "Settings Path".to_string(),
         (*__netopts.game_settings_loc)
@@ -41,20 +49,44 @@ pub fn display_motd(__netopts: &NetOpts) {
     let max_len = keys.first().unwrap().len();
     
     for (__key, __value) in arg_lines.clone() {
-        println!("value: {}", __value);
         s.push_str(
             &format!("\t- {0:<1$}: {2}\n", __key, max_len, __value)
         );
     }    
+
     println!("{s}");
 }
 
-/*
-    motd format
-    Starting OpenWings v0.1.0
-    Args:
-        - Broadcast Port: 127.0.0.1:25372
-        - Listener Port: 127.0.0.1.25373
-        - Settings Path:
-        - Game ID:
-*/
+pub fn display_blocking(mut __stdout: &Stdout, __lobby: &Lobby, __capacity: &u16, __player_count: &u8) {
+    __stdout.queue(cursor::MoveToPreviousLine((*__capacity).into())).unwrap();
+    __stdout.queue(terminal::Clear(terminal::ClearType::FromCursorDown)).unwrap();
+    for i in 1..*__capacity+1 {
+        __stdout.write_all(format!("{}\n", i).as_bytes()).unwrap();
+    }
+    __stdout.write_all(format!("Waiting for Connections ({}/{})...", __player_count, __capacity).as_bytes()).unwrap();
+    __stdout.flush().unwrap();
+
+
+    thread::sleep(time::Duration::from_millis(1000));
+    // for i in (1..30).rev() {
+    //     stdout.queue(cursor::SavePosition).unwrap();
+    //     stdout.write_all(format!("{}: FOOBAR ", i).as_bytes()).unwrap();
+    //     stdout.queue(cursor::RestorePosition).unwrap();
+    //     stdout.flush().unwrap();
+    //     thread::sleep(time::Duration::from_millis(100));
+
+    //     stdout.queue(cursor::RestorePosition).unwrap();
+    //     stdout.queue(terminal::Clear(terminal::ClearType::FromCursorDown)).unwrap();
+    // }
+    __stdout.execute(cursor::Show).unwrap();
+
+
+
+
+}
+
+/***
+ * Display Blocking Fmt:
+ * Player {ID} - {IP}
+ * Waiting for Connections (1/5)...
+ */
