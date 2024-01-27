@@ -1,5 +1,6 @@
-// use tokio::io::{AsyncRead, AsyncWrite};
-// use tokio::net::TcpListener;
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::net::TcpListener;
+
 extern crate getopts;
 use getopts::Options;
 use net::Lobby;
@@ -106,7 +107,7 @@ async fn main() {
     log::display_motd(&netopts);
 
     let mut lobby: Lobby = Lobby::new(&json, &netopts);
-    lobby.open_connections_blocking();
+    lobby.open_player_registration().await;
 
 }
 

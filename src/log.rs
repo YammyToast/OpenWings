@@ -1,6 +1,6 @@
 use crate::net::{Lobby, NetOpts};
 use std::io::{stdout, Stdout, Write};
-use std::net::SocketAddrV4;
+use std::net::{SocketAddr, SocketAddrV4};
 use std::ops::Index;
 use std::vec;
 use std::{collections::HashMap, hash::Hash, thread, time};
@@ -64,7 +64,7 @@ pub fn display_blocking(mut __stdout: &Stdout, __lobby: &Lobby, __capacity: &u8,
 
     __stdout.queue(terminal::Clear(terminal::ClearType::FromCursorDown)).unwrap();
 
-    let mut vec_players: Vec<(String, SocketAddrV4)> = __lobby.players.clone().into_iter().collect();
+    let mut vec_players: Vec<(String, SocketAddr)> = __lobby.players.clone().into_iter().collect();
     for i in 1..*__capacity+1 {
         match vec_players.pop() {
             Some((id, socket)) => {
