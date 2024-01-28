@@ -3,15 +3,17 @@ use tokio::net::TcpListener;
 
 extern crate getopts;
 use getopts::Options;
-use net::Lobby;
-
-mod log;
-use crate::net::{NetOpts, JSONSettings};
-mod net;
-
-use std::{fs::File, io::Read};
-
 use serde::Deserialize;
+use std::{fs::File, io::Read};
+use std::{thread, time::Duration};
+
+mod game;
+mod log;
+mod net;
+use crate::net::{JSONSettings, NetOpts};
+use game::Game;
+use log::{init_terminal, term_clear, term_setup};
+
 /***
  * Program Opts:
  * ------
@@ -20,8 +22,6 @@ use serde::Deserialize;
  * Game Settings JSON/YAML location - FileLoc -set
  * Game ID - ID -i {16 bit integer}
  */
-
-
 
 fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} FILE [options]", program);
@@ -90,51 +90,34 @@ async fn main() {
     );
 
     // Load Settings File Data
-    let mut settings_file  = File::open(netopts.game_settings_loc.clone())
-    .expect(&format!(
+    let mut settings_file = File::open(netopts.game_settings_loc.clone()).expect(&format!(
         "Could not open file {}",
-        (*netopts.game_settings_loc)
-            .to_str()
-            .unwrap()
-            .to_string(),
+        (*netopts.game_settings_loc).to_str().unwrap().to_string(),
     ));
     let mut cts = String::new();
     settings_file.read_to_string(&mut cts).unwrap();
-    let json: JSONSettings = serde_json::from_str(&cts.to_string()).expect("Malformed JSON in provided Settings file.");
+    let json: JSONSettings =
+        serde_json::from_str(&cts.to_string()).expect("Malformed JSON in provided Settings file.");
+
+    let mut game: Game = Game::new(&netopts, &json);
 
     // Display Nice Looking Message :)
     // This looks cool no other reason.
     log::display_motd(&netopts);
+    thread::sleep(Duration::from_millis(1000));
 
-    let mut lobby: Lobby = Lobby::new(&json, &netopts);
-    lobby.open_player_registration().await;
+    let mut term = init_terminal().expect("Could not initialize terminal for display!");
+    term_setup();
+    /** Main Program Cycle */
+    loop {
+        game.update_display(&mut term);
+        match game.handle_display_events() {
+            game::PollEventResults::Break => break,
+            game::PollEventResults::None => {}
+        };
 
+        game.update();
+        
+    }
+    term_clear();
 }
-
-// use std::{
-//     io::{prelude::*, BufReader},
-//     net::{TcpListener, TcpStream},
-// };
-// fn main() {
-//     // Binding may throw error on initialization and this should be handled
-//     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
-//     for stream in listener.incoming() {
-//         let stream = stream.unwrap();
-
-//         handle_connection(stream)
-//     }
-// }
-
-// fn handle_connection(mut stream: TcpStream) {
-//     let buf_reader = BufReader::new(&mut stream);
-//     let http_request: Vec<_> = buf_reader
-//     .lines()
-//     .map(|result| result.unwrap())
-//     .take_while(|line| !line.is_empty())
-//     .collect();
-//     println!("Request: {:#?}", http_request);
-
-//     let response = "HTTP/1.1 200 OK\r\n\r\n";
-//     stream.write_all(response.as_bytes()).unwrap();
-
-// }
