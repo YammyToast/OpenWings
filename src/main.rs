@@ -37,12 +37,7 @@ async fn main() {
     let mut opts: Options = Options::new();
 
     // Define Options and Help Info
-    opts.optopt(
-        "o",
-        "output-socket",
-        "set output socket address",
-        "OUTPUT_SOCKET",
-    );
+
     opts.optopt(
         "l",
         "listen-socket-range",
@@ -76,14 +71,12 @@ async fn main() {
         return;
     }
 
-    let broad_binding: Option<String> = matches.opt_str("o");
     let listen_binding: Option<String> = matches.opt_str("l");
     // let listen_socket_raw: &mut String = listen_binding.get_or_insert("25373".to_string());
     let settings_loc_binding: Option<String> = matches.opt_str("s");
     let id_binding: Option<String> = matches.opt_str("i");
 
     let netopts = NetOpts::new(
-        broad_binding,
         listen_binding,
         settings_loc_binding,
         id_binding,
@@ -99,7 +92,7 @@ async fn main() {
     let json: JSONSettings =
         serde_json::from_str(&cts.to_string()).expect("Malformed JSON in provided Settings file.");
 
-    let mut game: Game = Game::new(&netopts, &json);
+    let mut game: Game = Game::new(&netopts, &json).await;
 
     // Display Nice Looking Message :)
     // This looks cool no other reason.
@@ -108,7 +101,7 @@ async fn main() {
 
     let mut term = init_terminal().expect("Could not initialize terminal for display!");
     term_setup();
-    /** Main Program Cycle */
+    //Main Program Cycle
     loop {
         game.update_display(&mut term);
         match game.handle_display_events() {

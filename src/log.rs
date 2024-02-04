@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::{game::Game, net::NetOpts};
 use crossterm::{
     event::{self, KeyCode, KeyEventKind},
@@ -26,10 +28,7 @@ pub fn display_motd(__netopts: &NetOpts) {
 
     // Append Arg Lines
     let mut arg_lines: HashMap<String, String> = HashMap::new();
-    arg_lines.insert(
-        "Broadcast Port".to_string(),
-        __netopts.broadcast.to_string(),
-    );
+
     arg_lines.insert("Listener Port".to_string(), __netopts.listen.to_string());
     arg_lines.insert(
         "Settings Path".to_string(),
@@ -122,7 +121,6 @@ pub fn lobby_display(__term: &mut term, __game: &Game) {
 
 fn build_header<'a>(__netotps: &'a NetOpts, __players: &'a u8) -> Paragraph<'a> {
     let mut s: String = String::new();
-    s.push_str(&*format!("\t- Broadcast Port: {:?}\n", __netotps.broadcast));
     s.push_str(&*format!(
         "\t- Listener/Clients Port: {:?}\n",
         __netotps.listen
@@ -142,6 +140,27 @@ fn build_game_settings<'a>() -> Paragraph<'a> {
     s.push_str(&*format!("TODO"));
     return Paragraph::new(s);
 }
+
+
+#[derive(Debug, Clone)]
+pub enum UpdateErrorTypes {
+    UnknownState,
+    Other
+}
+
+#[derive(Debug, Clone)]
+pub struct UpdateError {
+    pub err_type: UpdateErrorTypes
+}
+
+impl fmt::Display for UpdateError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Error Updating Game State: {:?}", self.err_type)
+
+    }
+}
+
+
 
 // pub fn display_blocking(mut __stdout: &Stdout, __lobby: &Lobby, __capacity: &u8, __player_count: &u8) {
 //     __stdout.queue(cursor::MoveToPreviousLine((*__capacity).into())).unwrap();

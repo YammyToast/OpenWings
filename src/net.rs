@@ -71,7 +71,6 @@ pub struct JSONSettings {
 
 // }
 pub struct NetOpts {
-    pub broadcast: SocketAddrV4,
     pub listen: SocketAddrV4,
     pub game_settings_loc: Box<Path>,
     pub id: String,
@@ -79,22 +78,17 @@ pub struct NetOpts {
 
 impl NetOpts {
     pub fn new(
-        mut __broadcast_str: Option<String>,
         mut __clients_str: Option<String>,
         mut __settings_path: Option<String>,
         mut __id: Option<String>,
     ) -> NetOpts {
-        let broadcast_socket_raw: &mut String = __broadcast_str.get_or_insert("25372".to_string());
         let clients_socket_raw: &mut String = __clients_str.get_or_insert("25373".to_string());
-        let broadcast_socket: SocketAddrV4 = SocketAddrV4::new(
-            Ipv4Addr::new(127, 0, 0, 1),
-            broadcast_socket_raw.parse::<u16>().unwrap(),
-        );
+        
+
         let clients_socket: SocketAddrV4 = SocketAddrV4::new(
             Ipv4Addr::new(127, 0, 0, 1),
             clients_socket_raw.parse::<u16>().unwrap(),
         );
-
         let settings_loc = std::path::Path::new(
             __settings_path.get_or_insert("./settings_default.json".to_string()),
         );
@@ -102,7 +96,6 @@ impl NetOpts {
         let id = __id.expect("No Game ID Provided! (-i ID)");
 
         return NetOpts {
-            broadcast: broadcast_socket,
             listen: clients_socket,
             game_settings_loc: settings_loc.into(),
             id: id,
@@ -110,6 +103,11 @@ impl NetOpts {
     }
 }
 
+
+pub fn handle_connections() {
+
+
+}
 // pub struct Lobby<'a> {
 //     pub player_count: u8,
 //     pub players: HashMap<String, SocketAddr>,

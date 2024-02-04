@@ -1,9 +1,10 @@
 use std::task::Poll;
 
 use crossterm::event::{self, KeyCode, KeyEventKind};
+use tokio::net::TcpListener;
 
 use crate::net::{JSONSettings, NetOpts};
-use crate::log::{lobby_display, term};
+use crate::log::{lobby_display, term, UpdateError, UpdateErrorTypes};
 
 pub enum GameStates {
     Lobby,
@@ -18,15 +19,22 @@ pub enum PollEventResults {
 pub struct Game<'a> {
     pub state: GameStates,
     pub netopts: &'a NetOpts,
-    pub players: u8
+    pub players: u8,
+    pub listener: TcpListener,
 }
 
 impl Game<'_> {
-    pub fn new<'a>(__netopts: &'a NetOpts, __settings: &'a JSONSettings) -> Game<'a> {
+    pub async fn new<'a>(__netopts: &'a NetOpts, __settings: &'a JSONSettings) -> Game<'a> {
+        let listener: TcpListener = match TcpListener::bind(__netopts.listen).await {
+            Ok(e) => e,
+            Err(_) => panic!("Can't Bind Listening Port: {}", __netopts.listen)
+        };
+
         Game {
             state: GameStates::Lobby,
             netopts: __netopts,
-            players: __settings.players
+            players: __settings.players,
+            listener
         }
 
     }
@@ -58,9 +66,21 @@ impl Game<'_> {
         PollEventResults::None
     }
 
-    pub fn update() -> Result<_, Box<dyn > {
+    pub fn update(&mut self) -> Option<UpdateError> { 
+        return match self.state {
+            GameStates::Lobby => {
 
+                None
 
+            }
+            _ => {
+                Some(UpdateError { err_type: UpdateErrorTypes::UnknownState })
+
+            }
+        };
     }
+
+
+
 
 }
