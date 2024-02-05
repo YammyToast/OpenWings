@@ -11,63 +11,87 @@ use tokio::sync::{mpsc, Mutex};
 use tokio_util::codec::{Framed, LinesCodec};
 use futures::sink::SinkExt;
 
+use crate::game::Game;
+
 
 #[derive(Debug, Deserialize)]
 pub struct JSONSettings {
     pub players: u8,
 }
+type Tx = mpsc::UnboundedSender<String>;
+type Rx = mpsc::UnboundedReceiver<String>;
+
+pub struct Shared{
+    clients: HashMap<SocketAddr, Tx>,
+    message_buf: VecDeque<(SocketAddr, String)>
+}
+
+pub struct Client {
+    lines: Framed<TcpStream, LinesCodec>,
+    rx: Rx
+}
+
+impl Shared {
+    pub fn new() -> Self {
+        Shared {
+            clients: HashMap::new(),
+            message_buf: VecDeque::new()
+        }
+    }
+
+    async fn broadcast(&mut self, message: &str) {
+        for client in self.clients.iter_mut() {
+            let _ = client.1.send(message.into());
+        }
+    }
+}
+
+impl Client {
+    async fn new(__net_shared: Arc<Mutex<Shared>>, __lines: Framed<TcpStream, LinesCodec>) -> io::Result<Client> {
+        let addr = __lines.get_ref().peer_addr().unwrap();
+        let (tx, rx) = mpsc::unbounded_channel();
+        
+        __net_shared.lock().await.clients.insert(addr, tx);
+        
+        Ok(Client { lines:__lines, rx: rx })
+    }
+}
+
+async fn process_client(__net_shared: Arc<Mutex<Shared>>, __stream: TcpStream, __addr: SocketAddr) -> Result<(), ()> {
+    let mut lines = Framed::new(__stream, LinesCodec::new());
+    lines.send("OpenWings!").await.unwrap();
+    println!("HERE");
+    let mut client = Client::new(__net_shared.clone(), lines).await.unwrap();
+
+    loop {
+        tokio::select! {
+            Some(msg) = client.rx.recv() => {
+                client.lines.send(&msg).await.unwrap();
+            }
+            result = client.lines.next() => match result {
+                Some(Ok(msg)) => {
+                    let mut state = __net_shared.lock().await;
+
+                }
+                Some(Err(e)) => {
+                    println!("ERROR");
+                }
+                None => break,
+            },
+        }
+    }
+
+    // If this section is reached it means that the client was disconnected!
+    // Let's let everyone still connected know about it.
+    {
+        let mut net_shared = __net_shared.lock().await;
+        net_shared.clients.remove(&__addr);
+    }
 
 
-// type Tx = mpsc::UnboundedSender<String>;
-// type Rx = mpsc::UnboundedReceiver<String>;
+    Ok(())
+}
 
-// struct Shared {
-//     peers: HashMap<SocketAddr, Tx>,
-// }
-
-// struct Peer {
-//     lines: Framed<TcpStream, LinesCodec>,
-//     rx: Rx,
-// }
-
-// impl Shared {
-//     fn new() -> Self {
-//         Shared {
-//             peers: HashMap::new(),
-//         }
-//     }
-
-//     async fn broadcast(&mut self, message: &str) {
-//         for peer in self.peers.iter_mut() {
-//             let _ = peer
-//                 .1
-//                 .send(message.into())
-//                 .expect("Cannot Broadcast Message.");
-//         }
-//     }
-
-//     async fn selective_broadcast(&mut self, __addr: SocketAddr, message: &str) {
-//         for peer in self.peers.iter_mut() {
-//             if *peer.0 != __addr {
-//                 let _ = peer
-//                 .1
-//                 .send(message.into())
-//                 .expect("Cannot Broadcast Message.");
-//             }
-
-//         }
-//     }
-// }
-
-// impl Peer {
-//     async fn new (__state: Arc<Mutex<Shared>>, __lines: Framed<TcpStream, LinesCodec>) -> io::Result<Peer> {
-//         let addr = __lines.get_ref().peer_addr().unwrap();
-
-//         let (tx, rx) = mpsc::unbounded_channel();
-
-//         __state.lock().await.peers.insert(addr,tx);
-//         Ok(Peer {lines: __lines , rx})
-//     }
 
 // }
 pub struct NetOpts {
@@ -104,9 +128,16 @@ impl NetOpts {
 }
 
 
-pub fn handle_connections() {
+pub async fn handle_connections(__game: &Game<'_>) {
+    let (stream, addr) = __game.listener.accept().await.unwrap();
+    let net_shared = Arc::clone(&__game.net_shared);
+    tokio::spawn(async move {
+        if let Err(e) = process_client(net_shared, stream, addr).await {
+            println!("{:?}", e);
 
+        }
 
+    });
 }
 // pub struct Lobby<'a> {
 //     pub player_count: u8,

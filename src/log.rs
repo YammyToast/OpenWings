@@ -160,32 +160,6 @@ impl fmt::Display for UpdateError {
     }
 }
 
-
-
-// pub fn display_blocking(mut __stdout: &Stdout, __lobby: &Lobby, __capacity: &u8, __player_count: &u8) {
-//     __stdout.queue(cursor::MoveToPreviousLine((*__capacity).into())).unwrap();
-
-//     __stdout.queue(terminal::Clear(terminal::ClearType::FromCursorDown)).unwrap();
-
-//     let mut vec_players: Vec<(String, SocketAddr)> = __lobby.players.clone().into_iter().collect();
-//     for i in 1..*__capacity+1 {
-//         match vec_players.pop() {
-//             Some((id, socket)) => {
-//                 __stdout.write_all(format!("Player: {:?} - Socket: {:?}\n", id, socket).as_bytes()).unwrap();
-//             }
-//             None => {
-//                 __stdout.write_all("\n".as_bytes()).unwrap();
-//             }
-//         }
-
-//     }
-//     __stdout.write_all(format!("Waiting for Connections ({}/{})...", __player_count, __capacity).as_bytes()).unwrap();
-
-//     __stdout.flush().unwrap();
-//     __stdout.execute(cursor::Show).unwrap();
-
-// }
-
 /***
  * Display Blocking Fmt:
  * Player {ID} - {IP}

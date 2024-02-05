@@ -1,9 +1,11 @@
 use std::task::Poll;
+use std::sync::Arc;
 
 use crossterm::event::{self, KeyCode, KeyEventKind};
 use tokio::net::TcpListener;
+use tokio::sync::Mutex;
 
-use crate::net::{JSONSettings, NetOpts};
+use crate::net::{self, JSONSettings, NetOpts, Shared};
 use crate::log::{lobby_display, term, UpdateError, UpdateErrorTypes};
 
 pub enum GameStates {
@@ -21,6 +23,7 @@ pub struct Game<'a> {
     pub netopts: &'a NetOpts,
     pub players: u8,
     pub listener: TcpListener,
+    pub net_shared: Arc<Mutex<Shared>>,
 }
 
 impl Game<'_> {
@@ -30,11 +33,14 @@ impl Game<'_> {
             Err(_) => panic!("Can't Bind Listening Port: {}", __netopts.listen)
         };
 
+        let net_shared = Arc::new(Mutex::new(Shared::new()));
+
         Game {
             state: GameStates::Lobby,
             netopts: __netopts,
             players: __settings.players,
-            listener
+            listener: listener,
+            net_shared: net_shared
         }
 
     }
@@ -66,10 +72,10 @@ impl Game<'_> {
         PollEventResults::None
     }
 
-    pub fn update(&mut self) -> Option<UpdateError> { 
+    pub async fn update(&mut self) -> Option<UpdateError> { 
         return match self.state {
             GameStates::Lobby => {
-
+                net::handle_connections(self).await;
                 None
 
             }

@@ -99,18 +99,18 @@ async fn main() {
     log::display_motd(&netopts);
     thread::sleep(Duration::from_millis(1000));
 
-    let mut term = init_terminal().expect("Could not initialize terminal for display!");
-    term_setup();
+    // let mut term = init_terminal().expect("Could not initialize terminal for display!");
+    // term_setup();
     //Main Program Cycle
     loop {
-        game.update_display(&mut term);
-        match game.handle_display_events() {
-            game::PollEventResults::Break => break,
-            game::PollEventResults::None => {}
-        };
+        // game.update_display(&mut term);
+        // match game.handle_display_events() {
+        //     game::PollEventResults::Break => break,
+        //     game::PollEventResults::None => {}
+        // };
 
-        game.update();
+        game.update().await;
         
     }
-    term_clear();
+    // term_clear();
 }
