@@ -60,7 +60,6 @@ impl Client {
 async fn process_client(__net_shared: Arc<Mutex<Shared>>, __stream: TcpStream, __addr: SocketAddr) -> Result<(), ()> {
     let mut lines = Framed::new(__stream, LinesCodec::new());
     lines.send("OpenWings!").await.unwrap();
-    println!("HERE");
     let mut client = Client::new(__net_shared.clone(), lines).await.unwrap();
 
     loop {
@@ -71,7 +70,8 @@ async fn process_client(__net_shared: Arc<Mutex<Shared>>, __stream: TcpStream, _
             result = client.lines.next() => match result {
                 Some(Ok(msg)) => {
                     let mut state = __net_shared.lock().await;
-
+                    let msg = format!("{}: {}", __addr, msg);
+                    state.broadcast(&msg).await;
                 }
                 Some(Err(e)) => {
                     println!("ERROR");
@@ -80,9 +80,7 @@ async fn process_client(__net_shared: Arc<Mutex<Shared>>, __stream: TcpStream, _
             },
         }
     }
-
-    // If this section is reached it means that the client was disconnected!
-    // Let's let everyone still connected know about it.
+    // Clean Disconnection
     {
         let mut net_shared = __net_shared.lock().await;
         net_shared.clients.remove(&__addr);
@@ -129,11 +127,19 @@ impl NetOpts {
 
 
 pub async fn handle_connections(__game: &Game<'_>) {
-    let (stream, addr) = __game.listener.accept().await.unwrap();
     let net_shared = Arc::clone(&__game.net_shared);
+    let listener = Arc::clone(&__game.listener);
     tokio::spawn(async move {
-        if let Err(e) = process_client(net_shared, stream, addr).await {
-            println!("{:?}", e);
+        loop {
+            let (stream, addr) = listener.accept().await.unwrap();
+            let client_shared = Arc::clone(&net_shared);
+            tokio::spawn( async move {
+                println!("SPAWN NEW");
+                if let Err(e) = process_client(client_shared, stream, addr).await {
+                    println!("Spawn Error: {:?}", e);
+        
+                }
+            });
 
         }
 

@@ -88,8 +88,8 @@ pub fn lobby_display(__term: &mut term, __game: &Game) {
                 ])
                 .split(frame.size());
 
-            let header = build_header(__game.netopts, &__game.players);
-            let list = build_player_list(&__game.players);
+            let header = build_header(__game.netopts, &__game.player_cap);
+            let list = build_player_list(&__game.player_cap);
             let settings = build_game_settings();
             frame.render_widget(
                 header.block(
@@ -132,6 +132,7 @@ fn build_header<'a>(__netotps: &'a NetOpts, __players: &'a u8) -> Paragraph<'a> 
 fn build_player_list<'a>(__players: &'a u8) -> Paragraph<'a> {
     let mut s: String = String::new();
     s.push_str(&*format!("Waiting for Players: (0/{})", __players));
+
     return Paragraph::new(s);
 }
 

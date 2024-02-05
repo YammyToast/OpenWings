@@ -9,7 +9,8 @@ use crate::net::{self, JSONSettings, NetOpts, Shared};
 use crate::log::{lobby_display, term, UpdateError, UpdateErrorTypes};
 
 pub enum GameStates {
-    Lobby,
+    OpenLobby,
+    WaitLobby,
     Loop
 }
 
@@ -21,8 +22,8 @@ pub enum PollEventResults {
 pub struct Game<'a> {
     pub state: GameStates,
     pub netopts: &'a NetOpts,
-    pub players: u8,
-    pub listener: TcpListener,
+    pub player_cap: u8,
+    pub listener: Arc<TcpListener>,
     pub net_shared: Arc<Mutex<Shared>>,
 }
 
@@ -36,23 +37,27 @@ impl Game<'_> {
         let net_shared = Arc::new(Mutex::new(Shared::new()));
 
         Game {
-            state: GameStates::Lobby,
+            state: GameStates::OpenLobby,
             netopts: __netopts,
-            players: __settings.players,
-            listener: listener,
+            player_cap: __settings.players,
+            listener: Arc::new(listener),
             net_shared: net_shared
         }
 
     }
 
+    pub fn update_vars(&mut self) {
+
+
+    }
+
+
     pub fn update_display(&mut self, __term: &mut term) {
         match self.state {
-            GameStates::Lobby => {
+            GameStates::WaitLobby => {
                 lobby_display(__term, &self)
-
             },
             GameStates::Loop => {
-
 
             },
             _ => {}
@@ -74,10 +79,14 @@ impl Game<'_> {
 
     pub async fn update(&mut self) -> Option<UpdateError> { 
         return match self.state {
-            GameStates::Lobby => {
+            GameStates::OpenLobby => {
                 net::handle_connections(self).await;
+                self.state = GameStates::WaitLobby;
                 None
 
+            }
+            GameStates::WaitLobby => {
+                None
             }
             _ => {
                 Some(UpdateError { err_type: UpdateErrorTypes::UnknownState })
