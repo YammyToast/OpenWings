@@ -1,15 +1,17 @@
 use crossterm::{cursor, ExecutableCommand};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tokio_stream::StreamExt;
 use std::io::{self, Write};
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::path::Path;
 use std::sync::Arc;
 use std::{collections::HashMap, collections::VecDeque, hash::Hash, net::SocketAddr};
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::{TcpStream};
 use tokio::sync::{mpsc, Mutex};
 use tokio_util::codec::{Framed, LinesCodec};
 use futures::sink::SinkExt;
+use chrono::{DateTime, Utc};
 
 use crate::game::Game;
 
@@ -134,7 +136,6 @@ pub async fn handle_connections(__game: &Game<'_>) {
             let (stream, addr) = listener.accept().await.unwrap();
             let client_shared = Arc::clone(&net_shared);
             tokio::spawn( async move {
-                println!("SPAWN NEW");
                 if let Err(e) = process_client(client_shared, stream, addr).await {
                     println!("Spawn Error: {:?}", e);
         
@@ -145,15 +146,41 @@ pub async fn handle_connections(__game: &Game<'_>) {
 
     });
 }
-// pub struct Lobby<'a> {
-//     pub player_count: u8,
-//     pub players: HashMap<String, SocketAddr>,
-//     pub ready: bool,
-//     net_opts: &'a NetOpts,
+
+// ===========================================================
+
+trait JSONBody {
+    fn serialize(&self) -> String;
+    fn deserialize(&self) -> String;
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MessageHeader {
+    pub game_id: String,
+    pub port: String,
+    pub timestamp: i64 // UNIXepoch
+}
+
+impl MessageHeader {
+    pub fn new(__game: &Game) -> Self {
+        MessageHeader {
+            
+
+        }
+    }
+
+}
+
+// ==================
+
+struct BodyGreetings {
+
+
+}
+
+// #[derive(Debug, Serialize, Deserialize)]
+// struct JSONMessage {
+//     header: MessageHeader,
+//     body: String
 // }
 
-
-/***
- * Player Register Packet
- * Player ID | IP (Is this inferred??) | Client ID (Optional)
- */

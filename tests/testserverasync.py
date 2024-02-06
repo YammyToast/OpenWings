@@ -3,6 +3,7 @@ import asyncio
 async def handle_client(reader, writer):
     request = None
     while request != 'quit':
+        print("TEST")
         request = (await reader.read(255)).decode('utf8')
         response = str(eval(request)) + '\n'
         writer.write(response.encode('utf8'))

@@ -5,7 +5,7 @@ use crossterm::event::{self, KeyCode, KeyEventKind};
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
-use crate::net::{self, JSONSettings, NetOpts, Shared};
+use crate::net::{self, JSONSettings, NetOpts, Shared, MessageHeader};
 use crate::log::{lobby_display, term, UpdateError, UpdateErrorTypes};
 
 pub enum GameStates {
@@ -95,7 +95,9 @@ impl Game<'_> {
         };
     }
 
-
+    pub fn create_message_header(&mut self) -> MessageHeader {
+        return MessageHeader::new(&self)
+    }
 
 
 }
