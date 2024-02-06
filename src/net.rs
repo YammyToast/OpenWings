@@ -1,29 +1,100 @@
 use crossterm::{cursor, ExecutableCommand};
-use serde::Deserialize;
-use std::io::Write;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use tokio_stream::StreamExt;
+use std::io::{self, Write};
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::path::Path;
 use std::sync::Arc;
-use std::thread;
 use std::{collections::HashMap, collections::VecDeque, hash::Hash, net::SocketAddr};
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::{TcpStream};
 use tokio::sync::{mpsc, Mutex};
-use tokio_stream::StreamExt;
 use tokio_util::codec::{Framed, LinesCodec};
+use futures::sink::SinkExt;
+use chrono::{DateTime, Utc};
 
+use crate::game::Game;
 
-use crate::log::display_blocking;
-
-type Tx = mpsc::UnboundedSender<String>;
-type Rx = mpsc::UnboundedReceiver<String>;
 
 #[derive(Debug, Deserialize)]
 pub struct JSONSettings {
-    players: u8,
+    pub players: u8,
+}
+type Tx = mpsc::UnboundedSender<String>;
+type Rx = mpsc::UnboundedReceiver<String>;
+
+pub struct Shared{
+    clients: HashMap<SocketAddr, Tx>,
+    message_buf: VecDeque<(SocketAddr, String)>
 }
 
+pub struct Client {
+    lines: Framed<TcpStream, LinesCodec>,
+    rx: Rx
+}
+
+impl Shared {
+    pub fn new() -> Self {
+        Shared {
+            clients: HashMap::new(),
+            message_buf: VecDeque::new()
+        }
+    }
+
+    async fn broadcast(&mut self, message: &str) {
+        for client in self.clients.iter_mut() {
+            let _ = client.1.send(message.into());
+        }
+    }
+}
+
+impl Client {
+    async fn new(__net_shared: Arc<Mutex<Shared>>, __lines: Framed<TcpStream, LinesCodec>) -> io::Result<Client> {
+        let addr = __lines.get_ref().peer_addr().unwrap();
+        let (tx, rx) = mpsc::unbounded_channel();
+        
+        __net_shared.lock().await.clients.insert(addr, tx);
+        
+        Ok(Client { lines:__lines, rx: rx })
+    }
+}
+
+async fn process_client(__net_shared: Arc<Mutex<Shared>>, __stream: TcpStream, __addr: SocketAddr) -> Result<(), ()> {
+    let mut lines = Framed::new(__stream, LinesCodec::new());
+    lines.send("OpenWings!").await.unwrap();
+    let mut client = Client::new(__net_shared.clone(), lines).await.unwrap();
+
+    loop {
+        tokio::select! {
+            Some(msg) = client.rx.recv() => {
+                client.lines.send(&msg).await.unwrap();
+            }
+            result = client.lines.next() => match result {
+                Some(Ok(msg)) => {
+                    let mut state = __net_shared.lock().await;
+                    let msg = format!("{}: {}", __addr, msg);
+                    state.broadcast(&msg).await;
+                }
+                Some(Err(e)) => {
+                    println!("ERROR");
+                }
+                None => break,
+            },
+        }
+    }
+    // Clean Disconnection
+    {
+        let mut net_shared = __net_shared.lock().await;
+        net_shared.clients.remove(&__addr);
+    }
+
+
+    Ok(())
+}
+
+
+// }
 pub struct NetOpts {
-    pub broadcast: SocketAddrV4,
     pub listen: SocketAddrV4,
     pub game_settings_loc: Box<Path>,
     pub id: String,
@@ -31,22 +102,17 @@ pub struct NetOpts {
 
 impl NetOpts {
     pub fn new(
-        mut __broadcast_str: Option<String>,
         mut __clients_str: Option<String>,
         mut __settings_path: Option<String>,
         mut __id: Option<String>,
     ) -> NetOpts {
-        let broadcast_socket_raw: &mut String = __broadcast_str.get_or_insert("25372".to_string());
         let clients_socket_raw: &mut String = __clients_str.get_or_insert("25373".to_string());
-        let broadcast_socket: SocketAddrV4 = SocketAddrV4::new(
-            Ipv4Addr::new(127, 0, 0, 1),
-            broadcast_socket_raw.parse::<u16>().unwrap(),
-        );
+        
+
         let clients_socket: SocketAddrV4 = SocketAddrV4::new(
             Ipv4Addr::new(127, 0, 0, 1),
             clients_socket_raw.parse::<u16>().unwrap(),
         );
-
         let settings_loc = std::path::Path::new(
             __settings_path.get_or_insert("./settings_default.json".to_string()),
         );
@@ -54,7 +120,6 @@ impl NetOpts {
         let id = __id.expect("No Game ID Provided! (-i ID)");
 
         return NetOpts {
-            broadcast: broadcast_socket,
             listen: clients_socket,
             game_settings_loc: settings_loc.into(),
             id: id,
@@ -62,81 +127,60 @@ impl NetOpts {
     }
 }
 
-pub struct Lobby<'a> {
-    pub player_count: u8,
-    pub players: HashMap<String, SocketAddr>,
-    pub ready: bool,
-    net_opts: &'a NetOpts,
-}
 
-impl Lobby<'_> {
-    pub fn new<'a>(__json_settings: &'a JSONSettings, __netops: &'a NetOpts) -> Lobby<'a> {
-        let players = __json_settings.players.clamp(0, 5);
-        return Lobby {
-            player_count: players,
-            players: HashMap::with_capacity(players.into()),
-            ready: false,
-            net_opts: __netops,
-        };
-    }
-
-    async fn handle_conn(mut __socket: TcpStream, __id: Arc<String>) {
-        let (read_stream, mut write_stream) = __socket.split();
-        let mut read_stream = BufReader::new(read_stream);
+pub async fn handle_connections(__game: &Game<'_>) {
+    let net_shared = Arc::clone(&__game.net_shared);
+    let listener = Arc::clone(&__game.listener);
+    tokio::spawn(async move {
         loop {
-            let mut data = String::new();
-            let read = read_stream.read_line(&mut data).await.unwrap();
-            if read == 0 {
-                break;
-            }
+            let (stream, addr) = listener.accept().await.unwrap();
+            let client_shared = Arc::clone(&net_shared);
+            tokio::spawn( async move {
+                if let Err(e) = process_client(client_shared, stream, addr).await {
+                    println!("Spawn Error: {:?}", e);
+        
+                }
+            });
 
-            println!("data: {}", data);
-
-            
-            write_stream
-                .write_all(&format!("OpenWings: {__id}",).as_bytes())
-                .await
-                .unwrap();
-            write_stream.write_all(b"\n").await.unwrap();
         }
-    }
 
-    pub async fn open_player_registration(&mut self) {
-        let mut stdout = std::io::stdout();
-        let mut players_conn: u8 = 0;
-        let capacity: u8 = self.player_count.into();
-
-        let listener = match TcpListener::bind(self.net_opts.listen).await {
-            Ok(e) => e,
-            Err(_) => panic!("Can't Bind Listening Port: {}", self.net_opts.listen),
-        };
-        let id = Arc::new(self.net_opts.id.clone());
-
-        while players_conn != capacity {
-            let (socket, ip) = listener.accept().await.unwrap();
-
-            self.players.insert(players_conn.to_string(), ip);
-            players_conn = players_conn + 1;
-            let id = Arc::clone(&id);
-
-            tokio::spawn(async move { Self::handle_conn(socket, id).await });
-            display_blocking(&stdout, &self, &capacity, &players_conn)
-            // for i in 1..6 {
-            //     players_conn = players_conn + 1;
-            //     display_blocking(&stdout, &self, &capacity, &i);
-            //     thread::sleep(time::Duration::from_millis(1000));
-            // }
-        }
-        // Very Nasty Code but it works :)
-        // Cleanup Terminal Outputs.
-        stdout
-            .execute(cursor::MoveToNextLine((capacity).into()))
-            .unwrap();
-        stdout.write_all("\n".as_bytes()).unwrap();
-    }
+    });
 }
 
-/***
- * Player Register Packet
- * Player ID | IP (Is this inferred??) | Client ID (Optional)
- */
+// ===========================================================
+
+trait JSONBody {
+    fn serialize(&self) -> String;
+    fn deserialize(&self) -> String;
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MessageHeader {
+    pub game_id: String,
+    pub port: String,
+    pub timestamp: i64 // UNIXepoch
+}
+
+impl MessageHeader {
+    pub fn new(__game: &Game) -> Self {
+        MessageHeader {
+            
+
+        }
+    }
+
+}
+
+// ==================
+
+struct BodyGreetings {
+
+
+}
+
+// #[derive(Debug, Serialize, Deserialize)]
+// struct JSONMessage {
+//     header: MessageHeader,
+//     body: String
+// }
+

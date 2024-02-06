@@ -1,13 +1,16 @@
-# echo-client.py
-
 import socket
 
-HOST = "127.0.0.1"  # The server's hostname or IP address
-PORT = 25373  # The port used by the server
+# Create a socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.connect((HOST, PORT))
-    s.sendall(b"Hello, world")
-    data = s.recv(1024)
+# Connect to the remote host and port
+sock.connect((remote_host, remote_port))
 
-    print(f"Received {data!r}")
+# Send a request to the host
+sock.send("Why don't you call me any more?\r\n")
+
+# Get the host's response, no more than, say, 1,024 bytes
+response_data = sock.recv(1024)
+
+# Terminate
+sock.close()
