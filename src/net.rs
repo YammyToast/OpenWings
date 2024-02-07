@@ -12,8 +12,10 @@ use tokio::sync::{mpsc, Mutex};
 use tokio_util::codec::{Framed, LinesCodec};
 use futures::sink::SinkExt;
 use chrono::{DateTime, Utc};
+use uuid::{uuid, Uuid};
 
-use crate::game::Game;
+
+use crate::game::{Game, Player};
 
 
 #[derive(Debug, Deserialize)]
@@ -25,7 +27,8 @@ type Rx = mpsc::UnboundedReceiver<String>;
 
 pub struct Shared{
     clients: HashMap<SocketAddr, Tx>,
-    message_buf: VecDeque<(SocketAddr, String)>
+    message_buf: VecDeque<(SocketAddr, String)>,
+    registered_users: HashMap<Uuid, Player>
 }
 
 pub struct Client {
@@ -33,11 +36,12 @@ pub struct Client {
     rx: Rx
 }
 
-impl Shared {
+impl Shared{
     pub fn new() -> Self {
         Shared {
             clients: HashMap::new(),
-            message_buf: VecDeque::new()
+            message_buf: VecDeque::new(),
+            registered_users: HashMap::new(),
         }
     }
 
@@ -61,6 +65,11 @@ impl Client {
 
 async fn process_client(__net_shared: Arc<Mutex<Shared>>, __stream: TcpStream, __addr: SocketAddr) -> Result<(), ()> {
     let mut lines = Framed::new(__stream, LinesCodec::new());
+    
+    // let greetings = JSONMessage::new(
+    //     ,
+    //     body
+    // )
     lines.send("OpenWings!").await.unwrap();
     let mut client = Client::new(__net_shared.clone(), lines).await.unwrap();
 
@@ -127,6 +136,7 @@ impl NetOpts {
     }
 }
 
+// ===========================================================
 
 pub async fn handle_connections(__game: &Game<'_>) {
     let net_shared = Arc::clone(&__game.net_shared);
@@ -151,10 +161,21 @@ pub async fn handle_connections(__game: &Game<'_>) {
 
 struct JSONMessage {
     header: MessageHeader,
-    body: dyn JSONObject
+    body: Box<dyn JSONBody>
 }
 
-trait JSONObject {
+impl JSONMessage {
+    pub fn new(__header: MessageHeader, __body: Box<dyn JSONBody>) -> Self {
+        JSONMessage {
+            header: __header,
+            body: __body
+        }
+    }
+}
+
+// ===========================================================
+
+trait JSONBody {
     fn serialize(&self) -> String;
     // fn deserialize(&self) -> String;
 }
@@ -177,14 +198,23 @@ impl MessageHeader {
     }
 }
 
-// ==================
+// ===========================================================
 
-struct BodyGreetings {
+pub struct BodyGreetings {
     pub current_players: u8,
     pub game_settings: String
 }
 
-impl JSONObject for BodyGreetings {
+impl BodyGreetings {
+    pub fn new(__game: &Game) -> Self {
+        BodyGreetings {
+            current_players: 0,
+            game_settings: "temp".into()
+        }
+    }
+}
+
+impl JSONBody for BodyGreetings {
     fn serialize(&self) -> String {
         let txt = json!({
             "current_players" : self.current_players,
@@ -192,12 +222,7 @@ impl JSONObject for BodyGreetings {
         });
         return serde_json::to_string(&txt).unwrap();
     }
-
 }
 
-// #[derive(Debug, Serialize, Deserialize)]
-// struct JSONMessage {
-//     header: MessageHeader,
-//     body: String
-// }
+// ===========================================================
 
