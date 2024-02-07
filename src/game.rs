@@ -86,6 +86,11 @@ impl Game<'_> {
 
             }
             GameStates::WaitLobby => {
+                let mut state = self.net_shared.lock().await;
+                // let messages = state.message_buf;
+                for (addr, msg) in state.message_buf.drain(..) {
+                    println!("MESSAGE FROM {}: {}",addr, msg);
+                }
                 None
             }
             _ => {

@@ -92,16 +92,18 @@ async fn main() {
     let json: JSONSettings =
         serde_json::from_str(&cts.to_string()).expect("Malformed JSON in provided Settings file.");
 
+        
     let mut game: Game = Game::new(&netopts, &json).await;
-
     // Display Nice Looking Message :)
     // This looks cool no other reason.
     log::display_motd(&netopts);
     thread::sleep(Duration::from_millis(1000));
 
+
+
     let mut term = init_terminal().expect("Could not initialize terminal for display!");
     term_setup();
-    //Main Program Cycle
+    // Main Program Cycle
     loop {
         game.update_vars();
         game.update_display(&mut term);
@@ -113,5 +115,6 @@ async fn main() {
         game.update().await;
         
     }
+    // Clear Environment
     term_clear();
 }

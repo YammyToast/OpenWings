@@ -1,8 +1,17 @@
 # Networking Message Structures
 
+## Schema
+
+100-199 : Util - Server
+200-300 : Util - Client
+300-399 : Game - Server
+400-499 : Game - Client 
+
 ## Server
 
 ### Greeting Message
+
+CODE: 100
 
 ```
 {
@@ -23,6 +32,8 @@
 
 ### Successful Register
 
+CODE: 101
+
 ``` 
 {
     header: {
@@ -40,6 +51,8 @@
 ```
 
 ### Unsuccessful Register
+
+CODE: 102
 
 ```
 {

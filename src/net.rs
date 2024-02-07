@@ -25,16 +25,20 @@ pub struct JSONSettings {
 type Tx = mpsc::UnboundedSender<String>;
 type Rx = mpsc::UnboundedReceiver<String>;
 
+// ===========================================================
+
 pub struct Shared{
     clients: HashMap<SocketAddr, Tx>,
-    message_buf: VecDeque<(SocketAddr, String)>,
-    registered_users: HashMap<Uuid, Player>
+    pub message_buf: VecDeque<(SocketAddr, String)>,
+    pub registered_users: HashMap<Uuid, Player>
 }
 
 pub struct Client {
     lines: Framed<TcpStream, LinesCodec>,
     rx: Rx
 }
+// ===========================================================
+
 
 impl Shared{
     pub fn new() -> Self {
@@ -63,6 +67,8 @@ impl Client {
     }
 }
 
+// ===========================================================
+
 async fn process_client(__net_shared: Arc<Mutex<Shared>>, __stream: TcpStream, __addr: SocketAddr) -> Result<(), ()> {
     let mut lines = Framed::new(__stream, LinesCodec::new());
     
@@ -81,11 +87,15 @@ async fn process_client(__net_shared: Arc<Mutex<Shared>>, __stream: TcpStream, _
             result = client.lines.next() => match result {
                 Some(Ok(msg)) => {
                     let mut state = __net_shared.lock().await;
+                    
+                    // Do some checking of ports here!
+                    state.message_buf.push_back((__addr, msg.clone()));
+
                     let msg = format!("{}: {}", __addr, msg);
                     state.broadcast(&msg).await;
                 }
                 Some(Err(e)) => {
-                    println!("ERROR");
+                    println!("MESSAGE ERROR");
                 }
                 None => break,
             },
