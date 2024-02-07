@@ -149,9 +149,14 @@ pub async fn handle_connections(__game: &Game<'_>) {
 
 // ===========================================================
 
-trait JSONBody {
+struct JSONMessage {
+    header: MessageHeader,
+    body: dyn JSONObject
+}
+
+trait JSONObject {
     fn serialize(&self) -> String;
-    fn deserialize(&self) -> String;
+    // fn deserialize(&self) -> String;
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -163,18 +168,30 @@ pub struct MessageHeader {
 
 impl MessageHeader {
     pub fn new(__game: &Game) -> Self {
-        MessageHeader {
-            
-
+        let dt_now = Utc::now();
+        return MessageHeader {
+            game_id: __game.netopts.id.clone(),
+            port: __game.netopts.listen.to_string(),
+            timestamp: dt_now.timestamp() 
         }
     }
-
 }
 
 // ==================
 
 struct BodyGreetings {
+    pub current_players: u8,
+    pub game_settings: String
+}
 
+impl JSONObject for BodyGreetings {
+    fn serialize(&self) -> String {
+        let txt = json!({
+            "current_players" : self.current_players,
+            "game_settings": self.game_settings
+        });
+        return serde_json::to_string(&txt).unwrap();
+    }
 
 }
 

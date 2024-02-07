@@ -96,7 +96,7 @@ impl Game<'_> {
     }
 
     pub fn create_message_header(&mut self) -> MessageHeader {
-        return MessageHeader::new(&self)
+        return MessageHeader::new(self)
     }
 
 
