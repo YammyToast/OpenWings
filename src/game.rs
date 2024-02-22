@@ -88,6 +88,7 @@ impl Game<'_> {
             GameStates::WaitLobby => {
                 let mut state = self.net_shared.lock().await;
                 // let messages = state.message_buf;
+                // Drain Messages and Process all!
                 for (addr, msg) in state.message_buf.drain(..) {
                     println!("MESSAGE FROM {}: {}",addr, msg);
                 }
@@ -98,6 +99,11 @@ impl Game<'_> {
 
             }
         };
+    }
+
+    fn broadcast_message(&mut self, ) {
+
+
     }
 
     pub fn create_message_header(&mut self) -> MessageHeader {

@@ -2,19 +2,15 @@
 
 ## Schema
 
-100-199 : Util - Server
-200-300 : Util - Client
-300-399 : Game - Server
-400-499 : Game - Client 
 
-## Server
 
 ### Greeting Message
 
-CODE: 100
+route : 'srv-greetings'
 
 ```
 {
+    route: 'srv-greetings',
     header: {
         game_id: num,
         port: string,
@@ -32,10 +28,11 @@ CODE: 100
 
 ### Successful Register
 
-CODE: 101
+route: 'srv-register-succeed'
 
 ``` 
 {
+    route: 'srv-register-succeed',
     header: {
         game_id: num,
         port: string,
@@ -52,10 +49,11 @@ CODE: 101
 
 ### Unsuccessful Register
 
-CODE: 102
+route: 'srv-register-fail'
 
 ```
 {
+    route: 'srv-register-fail',
     header: {
         game_id: num,
         port: string,
@@ -72,8 +70,12 @@ CODE: 102
 ## Client
 
 ### Register Player
+
+route: 'cl-req-register'
+
 ```
 {
+    route: 'req-register'
     header: {
         game_id: num
         port: string,

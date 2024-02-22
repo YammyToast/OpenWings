@@ -167,9 +167,16 @@ pub async fn handle_connections(__game: &Game<'_>) {
     });
 }
 
-// ===========================================================
+// // ===========================================================
+
+trait JSONBody {
+    fn get_route(&self) -> String;
+    fn serialize(&self) -> String;
+    // fn deserialize(&self) -> String;
+}
 
 struct JSONMessage {
+    route: String,
     header: MessageHeader,
     body: Box<dyn JSONBody>
 }
@@ -177,20 +184,25 @@ struct JSONMessage {
 impl JSONMessage {
     pub fn new(__header: MessageHeader, __body: Box<dyn JSONBody>) -> Self {
         JSONMessage {
+            route: __body.get_route(),
             header: __header,
             body: __body
         }
     }
+
+    pub fn serialize(&self) -> String {
+        let msg = json!({
+            "route": self.route,
+            "header": self.header.serialize(),
+            "body": self.body.serialize()
+        });
+        msg.to_string()
+    }
 }
 
-// ===========================================================
+// // ===========================================================
 
-trait JSONBody {
-    fn serialize(&self) -> String;
-    // fn deserialize(&self) -> String;
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct MessageHeader {
     pub game_id: String,
     pub port: String,
@@ -206,33 +218,64 @@ impl MessageHeader {
             timestamp: dt_now.timestamp() 
         }
     }
+
+    pub fn serialize(&self) -> String {
+        let msg = json!({
+            "game_id": self.game_id,
+            "port": self.port,
+            "timestamp": self.timestamp
+        });
+        msg.to_string()
+    }
 }
 
 // ===========================================================
 
-pub struct BodyGreetings {
-    pub current_players: u8,
+pub struct SrvGreetings {
+    pub current_players: usize,
     pub game_settings: String
 }
 
-impl BodyGreetings {
-    pub fn new(__game: &Game) -> Self {
-        BodyGreetings {
-            current_players: 0,
-            game_settings: "temp".into()
-        }
-    }
-}
-
-impl JSONBody for BodyGreetings {
+impl JSONBody for SrvGreetings {
     fn serialize(&self) -> String {
-        let txt = json!({
-            "current_players" : self.current_players,
+        let msg = json!({
+            "current_players": self.current_players,
             "game_settings": self.game_settings
         });
-        return serde_json::to_string(&txt).unwrap();
+        msg.to_string()
+    }
+
+    fn get_route(&self) -> String {
+        return "srv-greetings".to_string()
     }
 }
 
 // ===========================================================
+
+pub struct SrvSuccessfulRegister {
+    pub req_uuid: String,
+    pub new_uuid: String
+}
+
+impl JSONBody for SrvSuccessfulRegister {
+    fn serialize(&self) -> String {
+        let msg = json!({
+            "req_uuid": self.req_uuid,
+            "new_uuid": self.new_uuid
+        });
+        msg.to_string()
+    }
+
+    fn get_route(&self) -> String {
+        return "srv-register-succeed".to_string()
+    }
+
+}
+
+// ===========================================================
+
+pub struct SrvFailRegister {
+    pub req_uuid: String,
+    pub err: String
+}
 
