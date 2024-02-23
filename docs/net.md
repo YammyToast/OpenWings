@@ -75,7 +75,7 @@ route: 'cl-req-register'
 
 ```
 {
-    route: 'req-register'
+    route: 'cl-req-register'
     header: {
         game_id: num
         port: string,

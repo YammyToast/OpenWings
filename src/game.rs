@@ -5,8 +5,9 @@ use crossterm::event::{self, KeyCode, KeyEventKind};
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
-use crate::net::{self, JSONSettings, NetOpts, Shared, MessageHeader};
+use crate::net::{self, JSONSettings, NetOpts, Shared};
 use crate::log::{lobby_display, term, UpdateError, UpdateErrorTypes};
+use crate::messages::{MessageHeader};
 
 pub enum GameStates {
     OpenLobby,

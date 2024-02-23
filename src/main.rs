@@ -10,6 +10,7 @@ use std::{thread, time::Duration};
 mod game;
 mod log;
 mod net;
+mod messages;
 use crate::net::{JSONSettings, NetOpts};
 use game::Game;
 use log::{init_terminal, term_clear, term_setup};
