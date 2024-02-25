@@ -5,10 +5,10 @@ use crate::game::{Game, Player};
 use std::{collections::HashMap};
 // ===========================================================
 
-pub const CL_MESSAGE_INDEX: HashMap<String, fn()->dyn ClMessage> = HashMap::from([
-    ("cl-req-register".to_string(), ClRequestRegister::deserialize)
+// pub const CL_MESSAGE_INDEX: HashMap<String, fn(&Game, &str)->Result<Box<dyn ClMessage>, ()>> = HashMap::from([
+//     ("cl-req-register".to_string(), ClRequestRegister::deserialize)
 
-]);
+// ]);
 
 // ===========================================================
 
@@ -17,8 +17,6 @@ trait JSONBody {
     fn serialize(&self) -> String;
     // fn deserialize(&self) -> String;
 }
-
-
 
 // ===========================================================
 
@@ -52,7 +50,6 @@ impl SrvMessage {
 #[derive(Debug)]
 pub struct MessageHeader {
     pub game_id: String,
-    pub port: String,
     pub timestamp: i64 // UNIXepoch
 }
 
@@ -61,7 +58,6 @@ impl MessageHeader {
         let dt_now = Utc::now();
         return MessageHeader {
             game_id: __game.netopts.id.clone(),
-            port: __game.netopts.listen.to_string(),
             timestamp: dt_now.timestamp() 
         }
     }
@@ -69,7 +65,6 @@ impl MessageHeader {
     pub fn serialize(&self) -> String {
         let msg = json!({
             "game_id": self.game_id,
-            "port": self.port,
             "timestamp": self.timestamp
         });
         msg.to_string()
@@ -78,7 +73,6 @@ impl MessageHeader {
     pub fn deserialize(__json: serde_json::Value) -> Result<Self, ()> {
         Ok(MessageHeader{
             game_id: "1".to_string(),
-            port: 1.to_string(),
             timestamp: 1
 
         })
@@ -173,8 +167,8 @@ pub struct ClRequestRegister {
 }
 
 impl ClMessage for ClRequestRegister {
-    fn deserialize(__game: &Game, __json: &str) -> Result<Self, ()> {
-        
+    fn deserialize(__game: &Game, __json: &str) -> Result<Box<Self>, ()> {
+        Err(())
     }
 
 }

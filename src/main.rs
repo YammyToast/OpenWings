@@ -106,13 +106,12 @@ async fn main() {
     term_setup();
     // Main Program Cycle
     loop {
-        game.update_vars();
+        game.update_vars().await;
         game.update_display(&mut term);
         match game.handle_display_events() {
             game::PollEventResults::Break => break,
             game::PollEventResults::None => {}
         };
-
         game.update().await;
         
     }

@@ -13,7 +13,6 @@ route : 'srv-greetings'
     route: 'srv-greetings',
     header: {
         game_id: num,
-        port: string,
         timestamp: num (UNIX EPOCH)
     },
     body: {
@@ -35,7 +34,6 @@ route: 'srv-register-succeed'
     route: 'srv-register-succeed',
     header: {
         game_id: num,
-        port: string,
         timestamp: num (UNIX EPOCH)
     },
     body: {
@@ -56,7 +54,6 @@ route: 'srv-register-fail'
     route: 'srv-register-fail',
     header: {
         game_id: num,
-        port: string,
         timestamp: num (UNIX EPOCH)
     },
     body: {
@@ -78,12 +75,29 @@ route: 'cl-req-register'
     route: 'cl-req-register'
     header: {
         game_id: num
-        port: string,
         timestamp: num (UNIX EPOCH),
     },
     body: {
         username: string,
         req_uuid: string
+    }
+}
+```
+
+### Force Start Game
+
+route: 'cl-force-start'
+
+
+```
+{
+    route: 'cl-req-register'
+    header: {
+        game_id: num
+        timestamp: num (UNIX EPOCH),
+    },
+    body: {
+        player_uuid: string
     }
 }
 ```

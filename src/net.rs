@@ -20,7 +20,7 @@ use crate::game::{Game, Player};
 
 #[derive(Debug, Deserialize)]
 pub struct JSONSettings {
-    pub players: u8,
+    pub players: usize,
 }
 type Tx = mpsc::UnboundedSender<String>;
 type Rx = mpsc::UnboundedReceiver<String>;
@@ -28,6 +28,7 @@ type Rx = mpsc::UnboundedReceiver<String>;
 // ===========================================================
 
 pub struct Shared{
+    pub game_id: String,
     clients: HashMap<SocketAddr, Tx>,
     pub message_buf: VecDeque<(SocketAddr, String)>,
     pub registered_users: HashMap<Uuid, Player>
@@ -41,8 +42,9 @@ pub struct Client {
 
 
 impl Shared{
-    pub fn new() -> Self {
+    pub fn new(__game_id: &String) -> Self {
         Shared {
+            game_id: __game_id.to_string(),
             clients: HashMap::new(),
             message_buf: VecDeque::new(),
             registered_users: HashMap::new(),
@@ -70,13 +72,11 @@ impl Client {
 // ===========================================================
 
 async fn process_client(__net_shared: Arc<Mutex<Shared>>, __stream: TcpStream, __addr: SocketAddr) -> Result<(), ()> {
+    // let state = __net_shared.lock().await;
     let mut lines = Framed::new(__stream, LinesCodec::new());
-    
-    // let greetings = JSONMessage::new(
-    //     ,
-    //     body
-    // )
-    lines.send("OpenWings!").await.unwrap();
+    // let msg = format!("{{route:'srv-greetings', 'header': {{'game_id': {}, 'timestamp': {} }}}}", state.game_id, Utc::now().timestamp());
+    let msg = "OpenWings!";
+    lines.send(msg).await.unwrap();
     let mut client = Client::new(__net_shared.clone(), lines).await.unwrap();
 
     loop {

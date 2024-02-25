@@ -12,7 +12,8 @@ use crate::messages::{MessageHeader};
 pub enum GameStates {
     OpenLobby,
     WaitLobby,
-    Loop
+    Loop,
+    End
 }
 
 pub enum PollEventResults {
@@ -23,7 +24,8 @@ pub enum PollEventResults {
 pub struct Game<'a> {
     pub state: GameStates,
     pub netopts: &'a NetOpts,
-    pub player_cap: u8,
+    pub player_cap: usize,
+    pub player_count: usize,
     pub listener: Arc<TcpListener>,
     pub net_shared: Arc<Mutex<Shared>>,
 }
@@ -35,21 +37,22 @@ impl Game<'_> {
             Err(_) => panic!("Can't Bind Listening Port: {}", __netopts.listen)
         };
 
-        let net_shared = Arc::new(Mutex::new(Shared::new()));
+        let net_shared = Arc::new(Mutex::new(Shared::new(&__netopts.id)));
 
         Game {
             state: GameStates::OpenLobby,
             netopts: __netopts,
             player_cap: __settings.players,
+            player_count: 0,
             listener: Arc::new(listener),
             net_shared: net_shared
         }
 
     }
 
-    pub fn update_vars(&mut self) {
-
-
+    pub async fn update_vars(&mut self) {
+        let mut state = self.net_shared.lock().await;
+        self.player_count = state.registered_users.keys().len();
     }
 
 
@@ -87,12 +90,11 @@ impl Game<'_> {
 
             }
             GameStates::WaitLobby => {
-                let mut state = self.net_shared.lock().await;
                 // let messages = state.message_buf;
                 // Drain Messages and Process all!
-                for (addr, msg) in state.message_buf.drain(..) {
-                    println!("MESSAGE FROM {}: {}",addr, msg);
-                }
+                // To keep state change in the same space, if update returns True,
+                // update lobby to begin game. Otherwise, keep waiting.
+                self.update_wait_lobby().await;
                 None
             }
             _ => {
@@ -102,10 +104,19 @@ impl Game<'_> {
         };
     }
 
-    fn broadcast_message(&mut self, ) {
-
-
+    pub async fn update_wait_lobby(&mut self) -> bool {
+        let mut state = self.net_shared.lock().await;
+        for (addr, msg) in state.message_buf.drain(..) {
+            println!("MESSAGE FROM {}: {}",addr, msg);
+        }
+        // Return false as the lobby is not ready yet!
+        return false
     }
+
+    // fn broadcast_message(&mut self, ) {
+
+
+    // }
 
     pub fn create_message_header(&mut self) -> MessageHeader {
         return MessageHeader::new(self)

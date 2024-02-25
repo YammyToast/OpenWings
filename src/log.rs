@@ -89,7 +89,7 @@ pub fn lobby_display(__term: &mut term, __game: &Game) {
                 .split(frame.size());
 
             let header = build_header(__game.netopts, &__game.player_cap);
-            let list = build_player_list(&__game.player_cap);
+            let list = build_player_list(&__game.player_count, &__game.player_cap);
             let settings = build_game_settings();
             frame.render_widget(
                 header.block(
@@ -119,7 +119,7 @@ pub fn lobby_display(__term: &mut term, __game: &Game) {
         .unwrap();
 }
 
-fn build_header<'a>(__netotps: &'a NetOpts, __players: &'a u8) -> Paragraph<'a> {
+fn build_header<'a>(__netotps: &'a NetOpts, __players: &'a usize) -> Paragraph<'a> {
     let mut s: String = String::new();
     s.push_str(&*format!(
         "\t- Listener/Clients Port: {:?}\n",
@@ -129,9 +129,9 @@ fn build_header<'a>(__netotps: &'a NetOpts, __players: &'a u8) -> Paragraph<'a> 
     return Paragraph::new(s);
 }
 
-fn build_player_list<'a>(__players: &'a u8) -> Paragraph<'a> {
+fn build_player_list<'a>(__players_count: &'a usize, __players_cap: &'a usize) -> Paragraph<'a> {
     let mut s: String = String::new();
-    s.push_str(&*format!("Waiting for Players: (0/{})", __players));
+    s.push_str(&*format!("Waiting for Players: ({}/{})", __players_count, __players_cap));
 
     return Paragraph::new(s);
 }
