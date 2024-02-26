@@ -14,6 +14,7 @@ use ratatui::{
 use std::cmp::Ordering;
 use std::io::{stdout, Result, Stdout};
 use std::{collections::HashMap, hash::Hash, thread, time};
+use std::sync::Arc;
 
 pub type term = Terminal<CrosstermBackend<Stdout>>;
 
@@ -21,7 +22,7 @@ pub type term = Terminal<CrosstermBackend<Stdout>>;
      Timestamp | Line Number | [Message]
 */
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-pub fn display_motd(__netopts: &NetOpts) {
+pub fn display_motd(__netopts: Arc<NetOpts>) {
     let mut s = String::new();
     s.push_str(&format!("Starting OpenWings v{0}\n", VERSION).to_string());
     s.push_str(&"Args:\n".to_string());
@@ -88,7 +89,7 @@ pub fn lobby_display(__term: &mut term, __game: &Game) {
                 ])
                 .split(frame.size());
 
-            let header = build_header(__game.netopts, &__game.player_cap);
+            let header = build_header(__game.netopts.clone(), &__game.player_cap);
             let list = build_player_list(&__game.player_count, &__game.player_cap);
             let settings = build_game_settings();
             frame.render_widget(
@@ -119,7 +120,7 @@ pub fn lobby_display(__term: &mut term, __game: &Game) {
         .unwrap();
 }
 
-fn build_header<'a>(__netotps: &'a NetOpts, __players: &'a usize) -> Paragraph<'a> {
+fn build_header(__netotps: Arc<NetOpts>, __players: &usize) -> Paragraph{
     let mut s: String = String::new();
     s.push_str(&*format!(
         "\t- Listener/Clients Port: {:?}\n",

@@ -71,11 +71,9 @@ impl Client {
 
 // ===========================================================
 
-async fn process_client(__net_shared: Arc<Mutex<Shared>>, __stream: TcpStream, __addr: SocketAddr) -> Result<(), ()> {
-    // let state = __net_shared.lock().await;
+async fn process_client(__net_shared: Arc<Mutex<Shared>>, __stream: TcpStream, __addr: SocketAddr, __game_id: &String) -> Result<(), ()> {
     let mut lines = Framed::new(__stream, LinesCodec::new());
-    // let msg = format!("{{route:'srv-greetings', 'header': {{'game_id': {}, 'timestamp': {} }}}}", state.game_id, Utc::now().timestamp());
-    let msg = "OpenWings!";
+    let msg = format!("{{route:'srv-greetings', 'header': {{'game_id': \'{}\', 'timestamp': {} }}}}", __game_id, Utc::now().timestamp());
     lines.send(msg).await.unwrap();
     let mut client = Client::new(__net_shared.clone(), lines).await.unwrap();
 
@@ -148,15 +146,17 @@ impl NetOpts {
 
 // ===========================================================
 
-pub async fn handle_connections(__game: &Game<'_>) {
+pub async fn handle_connections(__game: &Game) {
     let net_shared = Arc::clone(&__game.net_shared);
     let listener = Arc::clone(&__game.listener);
+    let netopts = Arc::clone(&__game.netopts);
     tokio::spawn(async move {
         loop {
             let (stream, addr) = listener.accept().await.unwrap();
             let client_shared = Arc::clone(&net_shared);
+            let client_netopts = Arc::clone(&netopts);
             tokio::spawn( async move {
-                if let Err(e) = process_client(client_shared, stream, addr).await {
+                if let Err(e) = process_client(client_shared, stream, addr, &client_netopts.id).await {
                     println!("Spawn Error: {:?}", e);
         
                 }

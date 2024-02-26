@@ -94,10 +94,10 @@ async fn main() {
         serde_json::from_str(&cts.to_string()).expect("Malformed JSON in provided Settings file.");
 
         
-    let mut game: Game = Game::new(&netopts, &json).await;
+    let mut game: Game = Game::new(netopts, &json).await;
     // Display Nice Looking Message :)
     // This looks cool no other reason.
-    log::display_motd(&netopts);
+    log::display_motd(game.netopts.clone());
     thread::sleep(Duration::from_millis(1000));
 
 

@@ -21,17 +21,17 @@ pub enum PollEventResults {
     Break
 }
 
-pub struct Game<'a> {
+pub struct Game {
     pub state: GameStates,
-    pub netopts: &'a NetOpts,
+    pub netopts: Arc<NetOpts>,
     pub player_cap: usize,
     pub player_count: usize,
     pub listener: Arc<TcpListener>,
     pub net_shared: Arc<Mutex<Shared>>,
 }
 
-impl Game<'_> {
-    pub async fn new<'a>(__netopts: &'a NetOpts, __settings: &'a JSONSettings) -> Game<'a> {
+impl Game {
+    pub async fn new<'a>(__netopts: NetOpts, __settings: &'a JSONSettings) -> Game{
         let listener: TcpListener = match TcpListener::bind(__netopts.listen).await {
             Ok(e) => e,
             Err(_) => panic!("Can't Bind Listening Port: {}", __netopts.listen)
@@ -41,7 +41,7 @@ impl Game<'_> {
 
         Game {
             state: GameStates::OpenLobby,
-            netopts: __netopts,
+            netopts: Arc::new(__netopts),
             player_cap: __settings.players,
             player_count: 0,
             listener: Arc::new(listener),
