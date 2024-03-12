@@ -73,7 +73,7 @@ impl Client {
 
 async fn process_client(__net_shared: Arc<Mutex<Shared>>, __stream: TcpStream, __addr: SocketAddr, __game_id: &String) -> Result<(), ()> {
     let mut lines = Framed::new(__stream, LinesCodec::new());
-    let msg = format!("{{route:'srv-greetings', 'header': {{'game_id': \'{}\', 'timestamp': {} }}}}", __game_id, Utc::now().timestamp());
+    let msg = format!("{{'route':'srv-greetings', 'header': {{'game_id': \'{}\', 'timestamp': {} }}}}", __game_id, Utc::now().timestamp());
     lines.send(msg).await.unwrap();
     let mut client = Client::new(__net_shared.clone(), lines).await.unwrap();
 
